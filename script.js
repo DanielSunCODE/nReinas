@@ -5,13 +5,23 @@
    ───────────────────────────────────────── */
 const state = {
     N: 4,
-    board: [],    // board[row][col] = true/false (reina)
+    board: [],
     seconds: 0,
     timerInterval: null,
     gameRunning: false,
     animating: false,
     animTimeouts: [],
+    currentSolutions: []
 };
+
+/* ══════════════════════════════════════════
+   CONTROL DE BOTONES INFERIORES
+   ══════════════════════════════════════════ */
+function setGameButtonsDisabled(disabled) {
+    document.getElementById('btn-reset').disabled = disabled;
+    document.getElementById('btn-solve').disabled = disabled;
+    document.getElementById('btn-menu').disabled = disabled;
+}
 
 /* ══════════════════════════════════════════
    NAVEGACIÓN
@@ -48,11 +58,9 @@ function updateNBtns() {
     );
 }
 
-/* tablero decorativo del splash (solución de N=4 fija) */
 function buildBoardPreview() {
     const bp = document.getElementById('bp');
     bp.innerHTML = '';
-    // solución fija 4×4 para decoración: reinas en (0,1),(1,3),(2,0),(3,2)
     const queens = [[0, 1], [1, 3], [2, 0], [3, 2]];
     for (let r = 0; r < 4; r++) {
         for (let c = 0; c < 4; c++) {
@@ -86,7 +94,8 @@ function initGame() {
     setHint('Coloca las reinas en el tablero', false);
     startTimer();
 
-    document.getElementById('btn-solve').disabled = false;
+    // Desbloquear botones al iniciar o reiniciar
+    setGameButtonsDisabled(false);
 }
 function resetGame() { initGame(); }
 
@@ -115,13 +124,11 @@ function buildDOM() {
     const board = document.getElementById('board');
     board.innerHTML = '';
 
-    // tamaño de celda responsivo
     const maxW = Math.min(window.innerWidth - 80, 520);
     const cellSize = Math.floor(maxW / N);
     board.style.gridTemplateColumns = `repeat(${N}, ${cellSize}px)`;
     board.style.width = `${cellSize * N}px`;
 
-    // etiquetas de fila (letras)
     const rowLabels = document.getElementById('row-labels');
     rowLabels.innerHTML = '';
     for (let r = 0; r < N; r++) {
@@ -129,11 +136,10 @@ function buildDOM() {
         lbl.className = 'row-label';
         lbl.style.height = `${cellSize}px`;
         lbl.style.width = '18px';
-        lbl.textContent = String.fromCharCode(65 + r); // A, B, C...
+        lbl.textContent = String.fromCharCode(65 + r);
         rowLabels.appendChild(lbl);
     }
 
-    // etiquetas de columna (números)
     const colLabels = document.getElementById('col-labels');
     colLabels.innerHTML = '';
     colLabels.style.gridTemplateColumns = `repeat(${N}, ${cellSize}px)`;
@@ -146,7 +152,6 @@ function buildDOM() {
         colLabels.appendChild(lbl);
     }
 
-    // celdas
     for (let r = 0; r < N; r++) {
         for (let c = 0; c < N; c++) {
             const cell = document.createElement('div');
@@ -177,7 +182,6 @@ function buildRowProgress() {
 function clickCell(r, c) {
     if (!state.gameRunning || state.animating) return;
 
-    // toggle reina
     state.board[r][c] = !state.board[r][c];
 
     const placed = countQueens();
@@ -186,7 +190,6 @@ function clickCell(r, c) {
     renderAll();
     updateRowProgress();
 
-    // verificar si hay conflictos
     const conflicts = getConflictCells();
     if (conflicts.size > 0) {
         setHint('Conflicto detectado — dos reinas se atacan', true);
@@ -194,11 +197,10 @@ function clickCell(r, c) {
     }
 
     if (placed === state.N) {
-        // ¡ganó!
         state.gameRunning = false;
         stopTimer();
         setHint('¡Solución correcta!', false);
-        setTimeout(showWin, 400);
+        setTimeout(() => showWin(false), 400);
     } else if (placed < state.N) {
         const remaining = state.N - placed;
         setHint(`Coloca ${remaining} reina${remaining !== 1 ? 's' : ''} más`, false);
@@ -209,9 +211,6 @@ function countQueens() {
     return state.board.flat().filter(Boolean).length;
 }
 
-/**
- * Devuelve Set de "r,c" de celdas con reinas en conflicto.
- */
 function getConflictCells() {
     const N = state.N;
     const conflicts = new Set();
@@ -234,9 +233,6 @@ function getConflictCells() {
     return conflicts;
 }
 
-/**
- * Devuelve Set de "r,c" amenazadas por cualquier reina (para shading).
- */
 function getThreatenedCells() {
     const N = state.N;
     const threatened = new Set();
@@ -317,15 +313,9 @@ function setHint(msg, isError) {
 }
 
 /* ══════════════════════════════════════════
-   ALGORITMO BACKTRACKING (mismo que Java)
+   ALGORITMO BACKTRACKING (Múltiples soluciones)
    ══════════════════════════════════════════ */
 
-/**
- * esSeguro — igual que en Java:
- *   - verifica columna hacia arriba
- *   - diagonal izquierda superior
- *   - diagonal derecha superior
- */
 function esSeguro(tablero, fila, col) {
     const N = tablero.length;
     for (let i = 0; i < fila; i++)
@@ -337,46 +327,63 @@ function esSeguro(tablero, fila, col) {
     return true;
 }
 
-/**
- * Genera la traza de pasos del backtracking:
- * cada paso = { type, row, col }
- *   type: 'try'      → intentando colocar (esSeguro=true, antes de recursión)
- *         'place'    → se coloca definitivamente (parte de solución)
- *         'backtrack'→ se quita (backtracking)
- *         'skip'     → esSeguro=false, se salta
- *         'solved'   → tablero completo
- */
-function buildTrace(N) {
-    const steps = [];
+function findAllSolutions(N) {
+    const soluciones = [];
     const tablero = Array.from({ length: N }, () => Array(N).fill(false));
 
     function resolver(fila) {
         if (fila === N) {
-            steps.push({ type: 'solved', board: tablero.map(r => [...r]) });
-            return true;
+            soluciones.push(tablero.map(r => [...r]));
+            return;
         }
         for (let col = 0; col < N; col++) {
             if (esSeguro(tablero, fila, col)) {
+                tablero[fila][col] = true;
+                resolver(fila + 1);
+                tablero[fila][col] = false;
+            }
+        }
+    }
+    resolver(0);
+    return soluciones;
+}
+
+function buildTraceForSolution(N, targetIndex) {
+    const steps = [];
+    let solutionCount = 0;
+    const tablero = Array.from({ length: N }, () => Array(N).fill(false));
+    let found = false;
+
+    function resolver(fila) {
+        if (found) return;
+        if (fila === N) {
+            if (solutionCount === targetIndex) {
+                steps.push({ type: 'solved', board: tablero.map(r => [...r]) });
+                found = true;
+            }
+            solutionCount++;
+            return;
+        }
+        for (let col = 0; col < N; col++) {
+            if (found) return;
+            if (esSeguro(tablero, fila, col)) {
                 steps.push({ type: 'try', row: fila, col });
                 tablero[fila][col] = true;
-                if (resolver(fila + 1)) {
-                    return true;
-                }
+                resolver(fila + 1);
+                if (found) return;
                 tablero[fila][col] = false;
                 steps.push({ type: 'backtrack', row: fila, col });
             } else {
                 steps.push({ type: 'skip', row: fila, col });
             }
         }
-        return false;
     }
-
     resolver(0);
     return steps;
 }
 
 /* ══════════════════════════════════════════
-   ANIMACIÓN DE SOLUCIÓN
+   FLUJO DE SOLUCIONES Y ANIMACIÓN
    ══════════════════════════════════════════ */
 function stopAnim() {
     state.animating = false;
@@ -384,27 +391,79 @@ function stopAnim() {
     state.animTimeouts = [];
 }
 
-function animateSolution() {
-    closeWin();
+function startSolutionFlow() {
     stopAnim();
+    stopTimer();
 
-    // reiniciar tablero limpio
+    const N = state.N;
+    const sols = findAllSolutions(N);
+    state.currentSolutions = sols;
+
+    document.getElementById('options-sub').textContent = `Se encontraron ${sols.length} soluciones para el tablero ${N}×${N}.`;
+    document.getElementById('options-label').textContent = `Elige una solución (1 - ${sols.length})`;
+
+    const input = document.getElementById('sol-input');
+    input.max = sols.length;
+    input.value = 1;
+
+    document.getElementById('win-box').style.display = 'none';
+    document.getElementById('options-box').style.display = 'block';
+    document.getElementById('main-overlay').classList.add('show');
+}
+
+function confirmSolution(withAnim) {
+    const inputVal = parseInt(document.getElementById('sol-input').value, 10);
+    const totalSols = state.currentSolutions.length;
+
+    if (isNaN(inputVal) || inputVal < 1 || inputVal > totalSols) {
+        setHint(`Por favor ingresa un número entre 1 y ${totalSols}`, true);
+        return;
+    }
+
+    closeModal();
+    const solIndex = inputVal - 1;
+
+    if (withAnim) {
+        animateSolutionIndex(solIndex, totalSols);
+    } else {
+        showSolutionInstant(state.currentSolutions[solIndex], solIndex + 1, totalSols);
+    }
+}
+
+function showSolutionInstant(board, numSol, totalSols) {
+    const N = state.N;
+    state.board = board.map(r => [...r]);
+    state.gameRunning = false;
+    document.getElementById('queens-val').textContent = N;
+
+    // BLOQUEAMOS los botones para que no puedan interrumpir los 3 segundos
+    setGameButtonsDisabled(true);
+
+    renderAll();
+    updateRowProgress();
+    setHint(`Mostrando solución óptima #${numSol} de ${totalSols}`, false);
+
+    // Agregamos este setTimeout a la lista de animTimeouts para poder detenerlo si es necesario
+    const t = setTimeout(() => { showWin(true, numSol); }, 3000);
+    state.animTimeouts.push(t);
+}
+
+function animateSolutionIndex(targetIndex, totalSols) {
     const N = state.N;
     state.board = Array.from({ length: N }, () => Array(N).fill(false));
     state.gameRunning = false;
     state.animating = true;
-    stopTimer();
 
-    document.getElementById('btn-solve').disabled = true;
     document.getElementById('queens-val').textContent = '0';
+
+    // BLOQUEAMOS los botones durante la animación y la espera de 3 segundos
+    setGameButtonsDisabled(true);
 
     renderAll();
     updateRowProgress();
-    setHint('Ejecutando backtracking recursivo...', false);
+    setHint(`Buscando la solución #${targetIndex + 1} de ${totalSols}...`, false);
 
-    const steps = buildTrace(N);
-
-    // velocidad: más rápido para tableros grandes
+    const steps = buildTraceForSolution(N, targetIndex);
     const speed = N <= 4 ? 340 : N <= 6 ? 200 : 100;
 
     steps.forEach((step, i) => {
@@ -415,27 +474,25 @@ function animateSolution() {
         state.animTimeouts.push(t);
     });
 
-    // al terminar
     const endT = setTimeout(() => {
         if (!state.animating) return;
         state.animating = false;
         state.gameRunning = false;
-        document.getElementById('btn-solve').disabled = false;
 
-        // limpiar clases de animación
         for (let r = 0; r < N; r++)
             for (let c = 0; c < N; c++) {
                 const cell = document.getElementById(`cell-${r}-${c}`);
-                if (cell) {
-                    cell.classList.remove('anim-try', 'anim-back', 'anim-ok');
-                }
+                if (cell) cell.classList.remove('anim-try', 'anim-back', 'anim-ok');
             }
 
         renderAll();
         updateRowProgress();
-        setHint('Solución óptima — backtracking completado', false);
+        setHint(`Solución óptima #${targetIndex + 1} completada`, false);
 
-        setTimeout(showWin, 500);
+        // Agregamos este también a la lista
+        const waitT = setTimeout(() => showWin(true, targetIndex + 1), 3000);
+        state.animTimeouts.push(waitT);
+
     }, steps.length * speed + 200);
     state.animTimeouts.push(endT);
 }
@@ -444,7 +501,6 @@ function applyAnimStep(step) {
     const N = state.N;
 
     if (step.type === 'solved') {
-        // pintar todo en verde brevemente
         for (let r = 0; r < N; r++)
             for (let c = 0; c < N; c++) {
                 const cell = document.getElementById(`cell-${r}-${c}`);
@@ -457,15 +513,13 @@ function applyAnimStep(step) {
     if (!cell) return;
 
     if (step.type === 'try') {
-        // colocar reina en state.board
         state.board[step.row][step.col] = true;
         cell.classList.remove('anim-back', 'anim-skip');
         cell.classList.add('anim-try');
         renderAll();
         updateRowProgress();
-        const n = countQueens();
-        document.getElementById('queens-val').textContent = n;
-        setHint(`Fila ${step.row + 1} → col ${step.col + 1}: esSeguro()=true, colocando...`, false);
+        document.getElementById('queens-val').textContent = countQueens();
+        setHint(`Fila ${step.row + 1} → col ${step.col + 1}: probando...`, false);
 
     } else if (step.type === 'backtrack') {
         state.board[step.row][step.col] = false;
@@ -473,34 +527,52 @@ function applyAnimStep(step) {
         cell.classList.add('anim-back');
         renderAll();
         updateRowProgress();
-        const n = countQueens();
-        document.getElementById('queens-val').textContent = n;
+        document.getElementById('queens-val').textContent = countQueens();
         setHint(`Fila ${step.row + 1} → col ${step.col + 1}: backtrack ↩ quitando reina`, true);
 
         setTimeout(() => cell.classList.remove('anim-back'), 260);
 
     } else if (step.type === 'skip') {
         cell.classList.add('anim-back');
-        setHint(`Fila ${step.row + 1} → col ${step.col + 1}: esSeguro()=false, saltando`, true);
+        setHint(`Fila ${step.row + 1} → col ${step.col + 1}: inválido, saltando`, true);
         setTimeout(() => cell.classList.remove('anim-back'), 180);
     }
 }
 
 /* ══════════════════════════════════════════
-   MODAL DE VICTORIA
+   CONTROL DEL OVERLAY ÚNICO
    ══════════════════════════════════════════ */
-function showWin() {
+function showWin(isAutoSolve = false, solNumber = null) {
     const m = Math.floor(state.seconds / 60);
     const s = state.seconds % 60;
+
     document.getElementById('win-time').textContent =
-        state.animating ? '—' : `${m}:${s.toString().padStart(2, '0')}`;
+        isAutoSolve ? '—' : `${m}:${s.toString().padStart(2, '0')}`;
     document.getElementById('win-queens').textContent = state.N;
-    document.getElementById('win-msg').textContent =
-        `${state.N} reinas colocadas correctamente en tablero ${state.N}×${state.N}`;
-    document.getElementById('win-overlay').classList.add('show');
+
+    let msg = `${state.N} reinas colocadas correctamente en tablero ${state.N}×${state.N}`;
+    if (solNumber !== null) {
+        msg = `Solución #${solNumber} de ${state.N} reinas en tablero ${state.N}×${state.N}`;
+    }
+
+    document.getElementById('win-msg').textContent = msg;
+
+    // Ocultamos opciones y mostramos victoria
+    document.getElementById('options-box').style.display = 'none';
+    document.getElementById('win-box').style.display = 'block';
+    document.getElementById('main-overlay').classList.add('show');
+
+    // Volvemos a habilitar los botones que quedaron de fondo
+    // para que estén funcionales si cierras el modal
+    setGameButtonsDisabled(false);
 }
-function closeWin() {
-    document.getElementById('win-overlay').classList.remove('show');
+
+function closeModal() {
+    document.getElementById('main-overlay').classList.remove('show');
+    setTimeout(() => {
+        document.getElementById('options-box').style.display = 'none';
+        document.getElementById('win-box').style.display = 'none';
+    }, 400);
 }
 
 /* ══════════════════════════════════════════

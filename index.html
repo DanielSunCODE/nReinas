@@ -10,693 +10,16 @@
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@200;300;400&display=swap"
         rel="stylesheet">
-    <style>
-        /* ─────────────────────────────────────────
-   TOKENS GLOBALES
-   ───────────────────────────────────────── */
-        :root {
-            --bg: #f5f4f0;
-            --fg: #1a1a1a;
-            --muted: #9a9a8e;
-            --border: rgba(26, 26, 26, 0.12);
-            --border-s: rgba(26, 26, 26, 0.28);
-            --cell-light: #ffffff;
-            --cell-dark: #e8e6e0;
-            --queen-col: #1a1a1a;
-            --threat: rgba(192, 57, 43, 0.10);
-            --conflict: rgba(192, 57, 43, 0.22);
-            --ok: rgba(39, 174, 96, 0.13);
-            --anim-try: rgba(26, 26, 26, 0.08);
-            --anim-back: rgba(192, 57, 43, 0.13);
-            --anim-ok: rgba(39, 174, 96, 0.18);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--fg);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes queenDrop {
-            0% {
-                transform: scale(1.4) translateY(-6px);
-                opacity: 0.5;
-            }
-
-            100% {
-                transform: scale(1) translateY(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            20% {
-                transform: translateX(-5px);
-            }
-
-            40% {
-                transform: translateX(5px);
-            }
-
-            60% {
-                transform: translateX(-3px);
-            }
-
-            80% {
-                transform: translateX(3px);
-            }
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        /* ══════════════════════════════════════════
-   SPLASH
-   ══════════════════════════════════════════ */
-        #splash {
-            text-align: center;
-            animation: fadeIn 0.6s ease;
-        }
-
-        .title-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.72rem;
-            letter-spacing: 0.22em;
-            color: var(--muted);
-            text-transform: uppercase;
-            margin-bottom: 18px;
-        }
-
-        h1 {
-            font-family: 'DM Mono', monospace;
-            font-size: clamp(2.2rem, 6vw, 4rem);
-            font-weight: 300;
-            letter-spacing: -0.02em;
-            line-height: 1;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            font-size: 0.9rem;
-            color: var(--muted);
-            font-weight: 300;
-            margin-bottom: 44px;
-        }
-
-        /* preview tablero decorativo */
-        .board-preview {
-            display: grid;
-            grid-template-columns: repeat(4, 22px);
-            grid-template-rows: repeat(4, 22px);
-            gap: 2px;
-            margin: 0 auto 44px;
-            width: fit-content;
-            opacity: 0.7;
-        }
-
-        .bp-cell {
-            border-radius: 2px;
-        }
-
-        .bp-cell.light {
-            background: var(--cell-light);
-            border: 1px solid var(--border);
-        }
-
-        .bp-cell.dark {
-            background: var(--cell-dark);
-        }
-
-        .bp-cell.queen {
-            background: var(--fg);
-            border-radius: 2px;
-            position: relative;
-        }
-
-        .bp-cell.queen::after {
-            content: '♛';
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            color: var(--bg);
-            line-height: 22px;
-            text-align: center;
-        }
-
-        .n-select-row {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            justify-content: center;
-            margin-bottom: 36px;
-        }
-
-        .n-select-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.72rem;
-            letter-spacing: 0.18em;
-            color: var(--muted);
-            text-transform: uppercase;
-        }
-
-        .n-btn {
-            width: 36px;
-            height: 36px;
-            border: 1px solid var(--border);
-            background: transparent;
-            border-radius: 50%;
-            font-family: 'DM Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--muted);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .n-btn.active,
-        .n-btn:hover {
-            border-color: var(--fg);
-            background: var(--fg);
-            color: var(--bg);
-        }
-
-        /* ══════════════════════════════════════════
-   BOTONES
-   ══════════════════════════════════════════ */
-        .btn-primary {
-            display: inline-block;
-            font-family: 'DM Mono', monospace;
-            font-size: 0.78rem;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            padding: 14px 40px;
-            border: 1px solid var(--fg);
-            background: transparent;
-            color: var(--fg);
-            cursor: pointer;
-            border-radius: 2px;
-            transition: all 0.2s;
-            margin: 6px;
-        }
-
-        .btn-primary:hover {
-            background: var(--fg);
-            color: var(--bg);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
-        }
-
-        .btn-primary:disabled:hover {
-            background: transparent;
-            color: var(--fg);
-        }
-
-        .btn-ghost {
-            display: inline-block;
-            font-family: 'DM Mono', monospace;
-            font-size: 0.78rem;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            padding: 14px 40px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--muted);
-            cursor: pointer;
-            border-radius: 2px;
-            transition: all 0.2s;
-            margin: 6px;
-        }
-
-        .btn-ghost:hover {
-            border-color: var(--fg);
-            color: var(--fg);
-        }
-
-        /* ══════════════════════════════════════════
-   INSTRUCCIONES
-   ══════════════════════════════════════════ */
-        #instructions {
-            display: none;
-            max-width: 500px;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .instr-title {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.72rem;
-            letter-spacing: 0.22em;
-            color: var(--muted);
-            text-transform: uppercase;
-            margin-bottom: 28px;
-        }
-
-        .rule {
-            display: flex;
-            gap: 18px;
-            margin-bottom: 22px;
-            align-items: flex-start;
-        }
-
-        .rule-num {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--muted);
-            min-width: 20px;
-            padding-top: 2px;
-        }
-
-        .rule-text {
-            font-size: 0.95rem;
-            font-weight: 300;
-            line-height: 1.6;
-            color: var(--fg);
-        }
-
-        .rule-text strong {
-            font-weight: 400;
-        }
-
-        .instr-divider {
-            width: 32px;
-            height: 1px;
-            background: var(--border);
-            margin: 32px 0;
-        }
-
-        /* ══════════════════════════════════════════
-   JUEGO
-   ══════════════════════════════════════════ */
-        #game {
-            display: none;
-            width: 100%;
-            max-width: 680px;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .game-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 36px;
-        }
-
-        .game-title {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.72rem;
-            letter-spacing: 0.22em;
-            color: var(--muted);
-            text-transform: uppercase;
-        }
-
-        .stats-row {
-            display: flex;
-            gap: 36px;
-        }
-
-        .stat-item {
-            text-align: right;
-        }
-
-        .stat-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.6rem;
-            letter-spacing: 0.18em;
-            color: var(--muted);
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .stat-value {
-            font-family: 'DM Mono', monospace;
-            font-size: 1.4rem;
-            font-weight: 300;
-            color: var(--fg);
-            line-height: 1;
-        }
-
-        /* ─────────────────────────────────────────
-   TABLERO
-   ───────────────────────────────────────── */
-        #board-wrap {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        #board {
-            display: grid;
-            border: 1px solid var(--border-s);
-            border-radius: 3px;
-            overflow: hidden;
-            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-            /* grid-template-columns se asigna por JS */
-        }
-
-        .cell {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.15s;
-            font-size: clamp(18px, 4vw, 32px);
-            user-select: none;
-        }
-
-        .cell.light {
-            background: var(--cell-light);
-        }
-
-        .cell.dark {
-            background: var(--cell-dark);
-        }
-
-        /* amenazada (en misma fila/col/diag que otra reina) */
-        .cell.threatened {
-            background: var(--threat) !important;
-        }
-
-        /* conflicto directo con otra reina */
-        .cell.conflict {
-            background: var(--conflict) !important;
-        }
-
-        /* hover de celda vacía */
-        .cell:not(.has-queen):hover::before {
-            content: '♛';
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--fg);
-            opacity: 0.18;
-            font-size: inherit;
-            pointer-events: none;
-        }
-
-        /* reina colocada */
-        .cell.has-queen {
-            cursor: pointer;
-        }
-
-        .cell.has-queen::after {
-            content: '♛';
-            color: var(--queen-col);
-            font-size: inherit;
-            animation: queenDrop 0.22s ease;
-            line-height: 1;
-        }
-
-        .cell.conflict.has-queen::after {
-            color: #c0392b;
-            animation: pulse 0.9s ease infinite;
-        }
-
-        /* animación durante "ver solución" */
-        .cell.anim-try {
-            background: var(--anim-try) !important;
-        }
-
-        .cell.anim-back {
-            background: var(--anim-back) !important;
-        }
-
-        .cell.anim-ok {
-            background: var(--anim-ok) !important;
-        }
-
-        /* ─────────────────────────────────────────
-   LEYENDA DE FILAS
-   ───────────────────────────────────────── */
-        #board-container {
-            display: flex;
-            gap: 6px;
-            align-items: flex-start;
-            justify-content: center;
-        }
-
-        .row-labels,
-        .col-labels-wrap {
-            display: flex;
-        }
-
-        .row-labels {
-            flex-direction: column;
-            gap: 0;
-            padding-top: 1px;
-        }
-
-        .row-label,
-        .col-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.58rem;
-            color: var(--muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .col-labels-wrap {
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .col-labels {
-            display: grid;
-            /* grid-template-columns se asigna por JS */
-            padding: 0 1px;
-        }
-
-        /* ─────────────────────────────────────────
-   HINT BAR
-   ───────────────────────────────────────── */
-        .hint-bar {
-            text-align: center;
-            margin-top: 8px;
-            min-height: 22px;
-        }
-
-        .hint-text {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.7rem;
-            letter-spacing: 0.14em;
-            color: var(--muted);
-            text-transform: uppercase;
-        }
-
-        .hint-text.error {
-            color: #c0392b;
-        }
-
-        .hint-text.success {
-            color: #27ae60;
-        }
-
-        /* ─────────────────────────────────────────
-   PIE DEL JUEGO
-   ───────────────────────────────────────── */
-        .game-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 32px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .optimal-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--muted);
-            letter-spacing: 0.1em;
-        }
-
-        /* ─────────────────────────────────────────
-   PROGRESO DE FILAS
-   ───────────────────────────────────────── */
-        #row-progress {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .row-pip {
-            width: 28px;
-            height: 4px;
-            background: var(--border-s);
-            border-radius: 2px;
-            transition: background 0.3s;
-        }
-
-        .row-pip.filled {
-            background: var(--fg);
-        }
-
-        .row-pip.conflict-pip {
-            background: #c0392b;
-        }
-
-        /* ══════════════════════════════════════════
-   OVERLAY DE VICTORIA
-   ══════════════════════════════════════════ */
-        .overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(245, 244, 240, 0.88);
-            backdrop-filter: blur(4px);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            padding: 20px;
-        }
-
-        .overlay.show {
-            display: flex;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .modal-box {
-            text-align: center;
-            max-width: 380px;
-            width: 100%;
-        }
-
-        .modal-symbol {
-            font-family: 'DM Mono', monospace;
-            font-size: 2rem;
-            display: block;
-            margin-bottom: 24px;
-            color: var(--fg);
-            opacity: 0.4;
-        }
-
-        .modal-title {
-            font-family: 'DM Mono', monospace;
-            font-size: 1.6rem;
-            font-weight: 300;
-            margin-bottom: 12px;
-        }
-
-        .modal-sub {
-            font-size: 0.9rem;
-            color: var(--muted);
-            font-weight: 300;
-            margin-bottom: 8px;
-        }
-
-        .modal-stats {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin: 36px 0;
-            padding: 28px 0;
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .modal-stat-item .stat-label {
-            text-align: center;
-        }
-
-        .modal-stat-item .stat-value {
-            font-size: 2rem;
-        }
-
-        .efficiency {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.68rem;
-            color: var(--muted);
-            letter-spacing: 0.14em;
-            margin-bottom: 32px;
-        }
-
-        /* ══════════════════════════════════════════
-   RESPONSIVE
-   ══════════════════════════════════════════ */
-        @media (max-width:600px) {
-            .stats-row {
-                gap: 20px;
-            }
-
-            .stat-value {
-                font-size: 1.1rem;
-            }
-
-            .game-bottom {
-                justify-content: center;
-            }
-
-            .btn-primary,
-            .btn-ghost {
-                padding: 12px 24px;
-                font-size: 0.72rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
 
-    <!-- ══════════════════════════════════════
-     SPLASH
-     ══════════════════════════════════════ -->
     <div id="splash">
         <p class="title-label">Puzzle clásico</p>
         <h1>N Reinas</h1>
         <p class="subtitle">Coloca <span id="splash-n">4</span> reinas sin que se ataquen</p>
 
-        <!-- tablero decorativo 4×4 con solución -->
         <div class="board-preview" id="bp"></div>
 
         <div class="n-select-row">
@@ -713,9 +36,6 @@
         </div>
     </div>
 
-    <!-- ══════════════════════════════════════
-     INSTRUCCIONES
-     ══════════════════════════════════════ -->
     <div id="instructions">
         <p class="instr-title">Reglas del juego</p>
 
@@ -744,9 +64,8 @@
         <div class="instr-divider"></div>
 
         <p class="rule-text" style="color:var(--muted); font-size:0.88rem; line-height:1.7;">
-            El botón <em>Ver Solución</em> muestra la animación del algoritmo de
-            <strong>backtracking recursivo</strong> resolviendo el puzzle paso a paso,
-            exactamente como lo hace el código Java.
+            El botón <em>Ver Solución</em> permite visualizar y animar cualquiera de las
+            soluciones óptimas utilizando el algoritmo de <strong>backtracking recursivo</strong>.
         </p>
 
         <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -755,9 +74,6 @@
         </div>
     </div>
 
-    <!-- ══════════════════════════════════════
-     JUEGO
-     ══════════════════════════════════════ -->
     <div id="game">
         <div class="game-top">
             <span class="game-title">N Reinas</span>
@@ -773,10 +89,8 @@
             </div>
         </div>
 
-        <!-- progreso visual fila por fila -->
         <div id="row-progress"></div>
 
-        <!-- tablero con etiquetas -->
         <div id="board-container">
             <div class="row-labels" id="row-labels"></div>
             <div class="col-labels-wrap">
@@ -794,18 +108,33 @@
         <div class="game-bottom">
             <span class="optimal-label" id="n-label"></span>
             <div>
-                <button class="btn-ghost" onclick="resetGame()">Reiniciar</button>
-                <button class="btn-primary" id="btn-solve" onclick="animateSolution()">Ver Solución</button>
-                <button class="btn-ghost" onclick="showSplash()">Menú</button>
+                <button class="btn-ghost" id="btn-reset" onclick="resetGame()">Reiniciar</button>
+                <button class="btn-primary" id="btn-solve" onclick="startSolutionFlow()">Ver Solución</button>
+                <button class="btn-ghost" id="btn-menu" onclick="showSplash()">Menú</button>
             </div>
         </div>
     </div>
 
-    <!-- ══════════════════════════════════════
-     OVERLAY DE VICTORIA
-     ══════════════════════════════════════ -->
-    <div class="overlay" id="win-overlay">
-        <div class="modal-box">
+    <div class="overlay" id="main-overlay">
+        
+        <div class="modal-box" id="options-box" style="display: none;">
+            <span class="modal-symbol">♛</span>
+            <h2 class="modal-title">Soluciones</h2>
+            <p class="modal-sub" id="options-sub">Se encontraron X soluciones.</p>
+
+            <div style="margin: 32px 0;">
+                <label for="sol-input" id="options-label" style="font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; display: block;">Elige una solución</label>
+                <input type="number" id="sol-input" class="modal-input" min="1" max="1" value="1">
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button class="btn-primary" onclick="confirmSolution(true)">Ver animado</button>
+                <button class="btn-ghost" style="border-color: var(--fg); color: var(--fg);" onclick="confirmSolution(false)">Ver al instante</button>
+                <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+            </div>
+        </div>
+
+        <div class="modal-box" id="win-box" style="display: none;">
             <span class="modal-symbol">&#9675;</span>
             <h2 class="modal-title">Resuelto</h2>
             <p class="modal-sub">Puzzle completado</p>
@@ -824,12 +153,14 @@
             <p class="efficiency" id="win-msg"></p>
 
             <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-                <button class="btn-primary" onclick="resetGame(); closeWin();">Jugar de nuevo</button>
-                <button class="btn-ghost" onclick="animateSolution(); closeWin();">Ver Solución Óptima</button>
-                <button class="btn-ghost" onclick="showSplash(); closeWin();">Menú</button>
+                <button class="btn-primary" onclick="resetGame(); closeModal();">Jugar de nuevo</button>
+                <button class="btn-ghost" onclick="startSolutionFlow();">Otras Soluciones</button>
+                <button class="btn-ghost" onclick="showSplash(); closeModal();">Menú</button>
             </div>
         </div>
+
     </div>
+
     <script src="script.js"></script>
 </body>
 
